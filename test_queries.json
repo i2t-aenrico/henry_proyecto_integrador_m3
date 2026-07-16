@@ -1,0 +1,50 @@
+[
+  {
+    "query": "¿Cuántos días de vacaciones me corresponden con 6 años de antigüedad?",
+    "expected_intent": "hr"
+  },
+  {
+    "query": "¿Qué documentación tengo que presentar si me caso?",
+    "expected_intent": "hr"
+  },
+  {
+    "query": "¿Cuántos días de licencia por maternidad me corresponden?",
+    "expected_intent": "hr"
+  },
+  {
+    "query": "No puedo conectarme a la VPN desde mi notebook, ¿qué hago?",
+    "expected_intent": "tech"
+  },
+  {
+    "query": "Perdí el celular donde tenía configurado el segundo factor de autenticación",
+    "expected_intent": "tech"
+  },
+  {
+    "query": "¿Cómo cambio la contraseña de mi correo corporativo?",
+    "expected_intent": "tech"
+  },
+  {
+    "query": "¿Cuándo se paga el reembolso de una factura de viáticos que ya aprobaron?",
+    "expected_intent": "finance"
+  },
+  {
+    "query": "¿Cómo se factura un proyecto que se cobra por abono mensual fijo?",
+    "expected_intent": "finance"
+  },
+  {
+    "query": "Necesito dar de alta un proveedor nuevo para pagarle una factura",
+    "expected_intent": "finance"
+  },
+  {
+    "query": "¿Cuál es la capital de Francia?",
+    "expected_intent": "unknown"
+  },
+  {
+    "query": "Quiero saber si mi mascota puede entrar a la oficina",
+    "expected_intent": "unknown"
+  },
+  {
+    "query": "Necesito ayuda con un tema, no sé bien a quién escribirle",
+    "expected_intent": "unknown"
+  }
+]

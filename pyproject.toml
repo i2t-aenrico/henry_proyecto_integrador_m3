@@ -1,0 +1,24 @@
+[project]
+name = "aem3-project"
+version = "0.1.0"
+description = "Sistema multiagente RAG (LangChain + LangGraph + Langfuse) para routing de consultas HR/Tech/Finance — i2T"
+requires-python = ">=3.11,<3.13"
+dependencies = [
+    "langchain==0.3.7",
+    "langchain-openai==0.2.9",
+    "langchain-community==0.3.7",
+    "langgraph==0.2.53",
+    "langfuse==2.53.9",
+    "faiss-cpu==1.9.0",
+    "tiktoken==0.8.0",
+    "python-dotenv==1.0.1",
+]
+
+[project.optional-dependencies]
+notebook = [
+    "jupyter==1.1.1",
+    "ipykernel==6.29.5",
+]
+
+[tool.uv]
+package = false
