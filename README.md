@@ -47,10 +47,12 @@ Consulta del usuario
 │   ├── graph.py          # StateGraph y routing condicional (LangGraph)
 │   ├── langfuse_setup.py # CallbackHandler y Score API
 │   ├── evaluator.py      # Evaluador automático (bonus, LLM-as-judge)
-│   └── main.py           # Punto de entrada por CLI
+│   ├── main.py           # Punto de entrada por CLI
+│   └── stress_test.py    # Test de consistencia (repite consultas y mide estabilidad)
 ├── notebooks/
 │   └── multi_agent_system.ipynb
 ├── test_queries.json
+├── stress_test_results/   # (generado, no versionado) resultados de src/stress_test.py
 ├── pyproject.toml
 ├── uv.lock
 ├── .python-version
@@ -174,3 +176,12 @@ respuesta generada por el LLM.
   fuente de un dominio.
 - No se implementó autenticación ni una interfaz web: el sistema se
   ejecuta por CLI o notebook, según el alcance del proyecto académico.
+- El agente HR mostró una inconsistencia ocasional al leer tablas con
+  rangos numéricos límite. Se midió con un test de estrés dedicado
+  (`src/stress_test.py`, 20 repeticiones de la misma consulta intercaladas
+  con otras del golden set): **95% de consistencia (19/20)** en calcular
+  correctamente los días de vacaciones según antigüedad. Es un
+  comportamiento conocido de los LLMs de OpenAI, que no garantizan
+  determinismo total incluso con `temperature=0`. El agente evaluador
+  (bonus) detectó correctamente el caso fallido, lo que confirma el valor
+  de esa capa de control de calidad.

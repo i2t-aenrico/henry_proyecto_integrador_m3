@@ -23,13 +23,18 @@ logger = logging.getLogger(__name__)
 
 
 def run_query(query: str) -> dict:
-    """Ejecuta una consulta a través del grafo completo. Cada nodo obtiene
-    su propio handler de Langfuse (ver agents.py), así que no hace falta
-    pasar callbacks acá. Al final, dispara el agente evaluador (bonus)
-    para puntuar la respuesta y anclar el score a la misma traza."""
-    result = compiled_graph.invoke({"query": query})
-
+    """Ejecuta una consulta a través del grafo completo. El config con el
+    callback de Langfuse se arma una sola vez acá y LangGraph lo reenvía a
+    cada nodo (que a su vez lo reenvía a sus llamadas internas), lo que
+    permite trazar tanto la capa de routing (orchestrator, route_by_intent)
+    como las llamadas internas de LangChain. Al final, dispara el agente
+    evaluador (bonus) para puntuar la respuesta y anclar el score a la
+    misma traza."""
     handler = get_langfuse_handler()
+    config = {"callbacks": [handler]} if handler else {}
+
+    result = compiled_graph.invoke({"query": query}, config=config)
+
     if handler is not None:
         trace_id = handler.get_trace_id()
 

@@ -5,11 +5,12 @@ Cada función de este módulo es un "nodo" de negocio que luego se conecta en
 el grafo de LangGraph (ver graph.py). Mantenerlos acá, desacoplados del
 grafo, permite testearlos de forma aislada (ver test_queries.json).
 
-Cada nodo obtiene su propio handler de Langfuse (get_langfuse_handler())
-en vez de depender de que LangGraph le reenvíe un `config` con callbacks.
-Como get_langfuse_handler() devuelve siempre la misma instancia cacheada,
-todas las llamadas de una misma consulta quedan agrupadas en una única
-traza, aunque cada nodo la pida por su cuenta.
+Los nodos reciben el `config` (con el callback de Langfuse) que LangGraph
+les reenvía automáticamente desde compiled_graph.invoke(..., config=config)
+en main.py, y lo forwardean a sus llamadas internas. Esto es lo que permite
+que Langfuse trace tanto la capa de routing de LangGraph (orchestrator,
+route_by_intent, __start__) como las llamadas internas de LangChain
+(chains, retriever, LLM).
 """
 
 from __future__ import annotations
@@ -19,10 +20,10 @@ from typing import Literal, TypedDict
 
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.runnables import RunnableConfig
 from langchain_openai import ChatOpenAI
 
 from src.config import LLM_MODEL, VALID_INTENTS
-from src.langfuse_setup import get_langfuse_handler
 from src.rag import RAGRegistry
 
 logger = logging.getLogger(__name__)
@@ -107,12 +108,9 @@ def _parse_classifier_output(raw: str) -> tuple[Intent, str]:
     return intent, reason
 
 
-def orchestrator_node(state: AgentState) -> AgentState:
+def orchestrator_node(state: AgentState, config: RunnableConfig | None = None) -> AgentState:
     """Clasifica la intención de la consulta. No accede a ningún vector
     store: es una decisión puramente de enrutamiento."""
-    handler = get_langfuse_handler()
-    config = {"callbacks": [handler]} if handler else {}
-
     raw = _classifier_chain.invoke({"query": state["query"]}, config=config)
     intent, reason = _parse_classifier_output(raw)
 
@@ -162,10 +160,7 @@ def _make_domain_node(domain: Intent):
     """Fábrica de nodos de dominio: devuelve una función de nodo que
     recupera contexto del dominio indicado y genera la respuesta."""
 
-    def _node(state: AgentState) -> AgentState:
-        handler = get_langfuse_handler()
-        config = {"callbacks": [handler]} if handler else {}
-
+    def _node(state: AgentState, config: RunnableConfig | None = None) -> AgentState:
         retriever = _rag_registry.get_retriever(domain)
         docs = retriever.invoke(state["query"], config=config)
 
