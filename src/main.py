@@ -23,14 +23,13 @@ logger = logging.getLogger(__name__)
 
 
 def run_query(query: str) -> dict:
-    """Ejecuta una consulta a través del grafo completo, con tracing en
-    Langfuse si está configurado, y dispara el agente evaluador (bonus)
+    """Ejecuta una consulta a través del grafo completo. Cada nodo obtiene
+    su propio handler de Langfuse (ver agents.py), así que no hace falta
+    pasar callbacks acá. Al final, dispara el agente evaluador (bonus)
     para puntuar la respuesta y anclar el score a la misma traza."""
+    result = compiled_graph.invoke({"query": query})
+
     handler = get_langfuse_handler()
-    config = {"callbacks": [handler]} if handler else {}
-
-    result = compiled_graph.invoke({"query": query}, config=config)
-
     if handler is not None:
         trace_id = handler.get_trace_id()
 
@@ -50,6 +49,7 @@ def run_query(query: str) -> dict:
 
     return result
 
+
 def _print_result(result: dict) -> None:
     print("-" * 70)
     print(f"Consulta:  {result.get('query')}")
@@ -67,6 +67,7 @@ def _print_result(result: dict) -> None:
         )
         print(f"Comentario del evaluador: {evaluation.get('comment')}")
     print("-" * 70)
+
 
 def validate_against_test_queries() -> None:
     """Corre todas las consultas de test_queries.json contra el grafo,
@@ -104,6 +105,7 @@ def validate_against_test_queries() -> None:
                 f"clarity={evaluation.get('clarity')} "
                 f"grounding={evaluation.get('grounding')}"
             )
+            print(f"       -> comentario: {evaluation.get('comment')}")
 
     print()
     print(f"Routing:   {correct}/{total} consultas correctamente enrutadas "
@@ -116,6 +118,7 @@ def validate_against_test_queries() -> None:
                 print(f"  {key:<15} {sum(values) / len(values):.2f}  (n={len(values)})")
     else:
         print("Calidad: sin datos del evaluador (Langfuse no está configurado).")
+
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Sistema multiagente AEM3/PIM3 (i2T)")

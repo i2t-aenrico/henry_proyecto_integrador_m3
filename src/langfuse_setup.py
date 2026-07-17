@@ -45,6 +45,7 @@ def get_langfuse_handler():
             public_key=LANGFUSE_PUBLIC_KEY,
             secret_key=LANGFUSE_SECRET_KEY,
             host=LANGFUSE_HOST,
+            # debug=True,  # TEMPORAL: para diagnosticar por qué no llegan trazas
         )
     return _handler
 

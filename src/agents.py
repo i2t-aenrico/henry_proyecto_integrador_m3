@@ -4,6 +4,12 @@ agents.py — Orquestador y agentes especializados (HR / Tech / Finance / Unknow
 Cada función de este módulo es un "nodo" de negocio que luego se conecta en
 el grafo de LangGraph (ver graph.py). Mantenerlos acá, desacoplados del
 grafo, permite testearlos de forma aislada (ver test_queries.json).
+
+Cada nodo obtiene su propio handler de Langfuse (get_langfuse_handler())
+en vez de depender de que LangGraph le reenvíe un `config` con callbacks.
+Como get_langfuse_handler() devuelve siempre la misma instancia cacheada,
+todas las llamadas de una misma consulta quedan agrupadas en una única
+traza, aunque cada nodo la pida por su cuenta.
 """
 
 from __future__ import annotations
@@ -13,12 +19,11 @@ from typing import Literal, TypedDict
 
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
-from langchain_core.runnables import RunnableConfig
 from langchain_openai import ChatOpenAI
 
 from src.config import LLM_MODEL, VALID_INTENTS
+from src.langfuse_setup import get_langfuse_handler
 from src.rag import RAGRegistry
-
 
 logger = logging.getLogger(__name__)
 
@@ -63,7 +68,7 @@ _CLASSIFIER_PROMPT = ChatPromptTemplate.from_messages(
             "Sos el orquestador de un sistema de atención al cliente de una "
             "empresa de software. Tu única tarea es clasificar la consulta "
             "del usuario en uno de estos cuatro dominios:\n\n"
-"- hr: vacaciones, licencias, beneficios, horarios, sueldo, "
+            "- hr: vacaciones, licencias, beneficios, horarios, sueldo, "
             "clima laboral, capacitación, ingreso o baja de personal, "
             "documentación personal y legajo (DNI, CUIL, actas de "
             "matrimonio o nacimiento, constancias), estructura "
@@ -101,9 +106,13 @@ def _parse_classifier_output(raw: str) -> tuple[Intent, str]:
 
     return intent, reason
 
-def orchestrator_node(state: AgentState, config: RunnableConfig | None = None) -> AgentState:
+
+def orchestrator_node(state: AgentState) -> AgentState:
     """Clasifica la intención de la consulta. No accede a ningún vector
     store: es una decisión puramente de enrutamiento."""
+    handler = get_langfuse_handler()
+    config = {"callbacks": [handler]} if handler else {}
+
     raw = _classifier_chain.invoke({"query": state["query"]}, config=config)
     intent, reason = _parse_classifier_output(raw)
 
@@ -153,7 +162,10 @@ def _make_domain_node(domain: Intent):
     """Fábrica de nodos de dominio: devuelve una función de nodo que
     recupera contexto del dominio indicado y genera la respuesta."""
 
-    def _node(state: AgentState, config: RunnableConfig | None = None) -> AgentState:
+    def _node(state: AgentState) -> AgentState:
+        handler = get_langfuse_handler()
+        config = {"callbacks": [handler]} if handler else {}
+
         retriever = _rag_registry.get_retriever(domain)
         docs = retriever.invoke(state["query"], config=config)
 
@@ -179,6 +191,7 @@ def _make_domain_node(domain: Intent):
         }
 
     return _node
+
 
 hr_agent_node = _make_domain_node("hr")
 tech_agent_node = _make_domain_node("tech")
