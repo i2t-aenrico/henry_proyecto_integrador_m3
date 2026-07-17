@@ -95,6 +95,13 @@ pip install -r requirements.txt
 cp .env.example .env
 ```
 
+> **Nota sobre Langfuse:** al crear el proyecto en Langfuse Cloud elegís
+> una región (US o EU), y las claves solo son válidas en esa región. Usá
+> el valor de `LANGFUSE_BASE_URL` (o `LANGFUSE_HOST`, alias soportado por
+> compatibilidad) tal cual te lo muestra el propio dashboard en
+> *Project Settings > API Keys > pestaña .env* — copiarlo así evita
+> errores silenciosos donde las trazas nunca llegan a aparecer.
+
 ## Ejecución
 
 Con `uv` anteponé `uv run` a cualquier comando; con `pip + venv`, activá el
@@ -122,12 +129,37 @@ También puede ejecutarse el flujo completo desde
 | "¿Cuándo se paga el reembolso de una factura de viáticos ya aprobada?" | finance |
 | "¿Cuál es la capital de Francia?" | unknown |
 
+## Resultados de validación
+
+Última corrida de `python -m src.main --validate` sobre las 12 consultas
+de `test_queries.json`:
+
+- **Routing:** 12/12 consultas correctamente enrutadas (100%).
+- **Calidad de respuesta** (evaluador automático, sobre las 9 consultas de
+  dominio real — se excluyen las 3 de control `unknown`): `correctness`,
+  `clarity` y `grounding` en 1.00 de promedio.
+
 ## Evaluador automático (bonus)
 
-`src/evaluator.py` usa un LLM como juez para puntuar cada respuesta en
-`groundedness` (qué tan fundamentada está en el contexto recuperado) y
-`relevance` (qué tan bien responde la consulta), y envía ambos puntajes a
-Langfuse mediante la Score API, asociados a la traza de la ejecución.
+`src/evaluator.py` implementa un **Evaluator Agent**: un LLM secundario que
+actúa como juez y puntúa cada respuesta generada por un agente de dominio
+(hr/tech/finance) según una rúbrica de tres criterios, en escala 0.0 a 1.0:
+
+- **correctness** (Corrección): ¿la respuesta es objetivamente correcta
+  respecto del contexto recuperado?
+- **clarity** (Claridad): ¿la respuesta es clara y fácil de entender?
+- **grounding** (Fundamentación): ¿todo lo afirmado está respaldado por el
+  contexto, sin inventar información?
+
+El promedio de los tres compone un `overall_score`. Los cuatro valores se
+envían a Langfuse mediante la Score API y quedan anclados a la traza de la
+ejecución (visibles en la pestaña **Scores** del dashboard).
+
+El evaluador se dispara **automáticamente** después de cada consulta (en
+`src/main.py`, tanto en una consulta suelta como en `--validate`), siempre
+que Langfuse esté configurado. El nodo `unknown` queda excluido de la
+evaluación, porque su respuesta es un mensaje fijo del código y no una
+respuesta generada por el LLM.
 
 ## Limitaciones conocidas
 
